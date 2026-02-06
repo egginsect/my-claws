@@ -18,6 +18,7 @@ RUN apt-get update && \
 
 # Install OpenClaw/Open Cloud via npm.
 RUN npm i -g openclaw && \
+    npm cache clean --force && \
     command -v openclaw && \
     openclaw --version
 
@@ -30,6 +31,8 @@ USER abc
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install 1password-cli gh && \
+    brew cleanup -s && \
+    rm -rf "${HOME}/.cache/Homebrew" && \
     brew --version && \
     gh --version && \
     op --version
@@ -44,9 +47,23 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}
 # Create s6 service for OpenClaw gateway (runs at container boot)
 # Also handles fixing /config permissions and user bashrc setup
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d && \
-    touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser && \
-    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nunset DISPLAY\nexec openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}' \
-    > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
-    chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
+    touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser
+RUN cat > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run <<'EOF'
+#!/usr/bin/with-contenv bash
+# Fix permissions for entire /config directory (abc home)
+chown -R abc:abc /config
+# Ensure brew in .bashrc (with UID check for shared home)
+if [ -f /config/.bashrc ]; then
+  # Remove old unsafe line if present (legacy fix cleanup)
+  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc
+  # Append secure line
+  if ! grep -q "brew shellenv" /config/.bashrc; then
+    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc
+  fi
+fi
+unset DISPLAY
+exec openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}
+EOF
+RUN chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/openclaw-gateway
