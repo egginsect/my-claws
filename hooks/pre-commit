@@ -1,0 +1,59 @@
+#!/bin/sh
+# pre-commit: Encrypt openclaw.json and workspace MD files
+# Supports multiple agent directories (e.g., coder, assistant)
+
+set -e
+
+# Use secure key location (user's home directory or environment variable)
+# Fallback to repository key.txt only if SOPS_AGE_KEY_FILE is not already set
+if [ -z "$SOPS_AGE_KEY_FILE" ]; then
+    if [ -f "$HOME/.config/sops/age/keys.txt" ]; then
+        export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+    elif [ -f "key.txt" ]; then
+        export SOPS_AGE_KEY_FILE=key.txt
+    else
+        echo "❌ Error: No SOPS Age key found. Set SOPS_AGE_KEY_FILE or create ~/.config/sops/age/keys.txt"
+        exit 1
+    fi
+fi
+
+# Find all .openclaw directories to identify agents
+find . -type d -name ".openclaw" -not -path "*/node_modules/*" | while read -r openclaw_dir; do
+    # 1. Encrypt openclaw.json (only if changed)
+    config_file="$openclaw_dir/openclaw.json"
+    if [ -f "$config_file" ]; then
+        enc_file="${config_file%.json}.enc.json"
+        # Only encrypt if source is newer or encrypted file doesn't exist
+        if [ ! -f "$enc_file" ] || [ "$config_file" -nt "$enc_file" ]; then
+            # Security: Check target is not a symlink before writing
+            if [ -L "$enc_file" ]; then
+                echo "❌ Error: Refusing to overwrite symlink at $enc_file"
+                exit 1
+            fi
+            echo "🔒 SOPS: Encrypting configuration in $config_file..."
+            sops -e "$config_file" > "$enc_file"
+            git add "$enc_file"
+        fi
+    fi
+
+    # 2. Encrypt Workspace MD files (maxdepth 1 only, only if changed)
+    workspace_dir="$openclaw_dir/workspace"
+    if [ -d "$workspace_dir" ]; then
+        find "$workspace_dir" -maxdepth 1 -name "*.md" -not -name "*.enc.md" | while read -r file; do
+            enc_file="${file%.md}.enc.md"
+            # Only encrypt if source is newer or encrypted file doesn't exist
+            if [ ! -f "$enc_file" ] || [ "$file" -nt "$enc_file" ]; then
+                # Security: Check target is not a symlink before writing
+                if [ -L "$enc_file" ]; then
+                    echo "❌ Error: Refusing to overwrite symlink at $enc_file"
+                    exit 1
+                fi
+                echo "🔒 SOPS: Encrypting workspace file $file..."
+                sops -e "$file" > "$enc_file"
+                git add "$enc_file"
+            fi
+        done
+    fi
+done
+
+echo "✅ SOPS: Encryption complete."

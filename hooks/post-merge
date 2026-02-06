@@ -1,0 +1,52 @@
+#!/bin/sh
+# post-merge: Decrypt configuration and workspace files
+# Supports multiple agent directories (e.g., coder, assistant)
+
+set -e
+
+# Exit if not a merge commit where ORIG_HEAD is available
+if ! git rev-parse --verify --quiet ORIG_HEAD > /dev/null 2>&1; then
+    echo "Info: Not a merge commit, skipping post-merge decryption."
+    exit 0
+fi
+
+# Use secure key location (user's home directory or environment variable)
+# Fallback to repository key.txt only if SOPS_AGE_KEY_FILE is not already set
+if [ -z "$SOPS_AGE_KEY_FILE" ]; then
+    if [ -f "$HOME/.config/sops/age/keys.txt" ]; then
+        export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+    elif [ -f "key.txt" ]; then
+        export SOPS_AGE_KEY_FILE=key.txt
+    else
+        echo "❌ Error: No SOPS Age key found. Set SOPS_AGE_KEY_FILE or create ~/.config/sops/age/keys.txt"
+        exit 1
+    fi
+fi
+
+files_changed=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD)
+
+# 1. Decrypt openclaw.json
+echo "$files_changed" | grep "\.openclaw/openclaw\.enc\.json$" | while read -r enc_file; do
+    dec_file="${enc_file%.enc.json}.json"
+    # Security: Remove target file if it's a symlink (prevent symlink attack)
+    if [ -L "$dec_file" ]; then
+        echo "⚠️  Warning: Removing symlink at $dec_file for security"
+        rm "$dec_file"
+    fi
+    echo "🔓 SOPS: Decrypting $dec_file..."
+    sops -d "$enc_file" > "$dec_file"
+done
+
+# 2. Decrypt Workspace MD files
+echo "$files_changed" | grep "\.openclaw/workspace/.*\.enc\.md$" | grep -v "\.enc\.enc\.md$" | while read -r enc_file; do
+    dec_file="${enc_file%.enc.md}.md"
+    # Security: Remove target file if it's a symlink (prevent symlink attack)
+    if [ -L "$dec_file" ]; then
+        echo "⚠️  Warning: Removing symlink at $dec_file for security"
+        rm "$dec_file"
+    fi
+    echo "🔓 SOPS: Decrypting $dec_file..."
+    sops -d "$enc_file" > "$dec_file"
+done
+
+echo "✅ SOPS: Decryption complete."
