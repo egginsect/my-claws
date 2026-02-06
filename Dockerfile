@@ -12,6 +12,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install system dependencies for Homebrew and tooling
+# Install system dependencies for Homebrew and tooling
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential procps file git unzip && \
     rm -rf /var/lib/apt/lists/*
@@ -19,7 +20,6 @@ RUN apt-get update && \
 # Install OpenClaw/Open Cloud via npm.
 RUN npm i -g openclaw && \
     npm cache clean --force && \
-    command -v openclaw && \
     openclaw --version
 
 # Setup Homebrew Directory for abc user
@@ -59,6 +59,10 @@ if [ -f /config/.bashrc ]; then
   # Append secure line
   if ! grep -q "brew shellenv" /config/.bashrc; then
     echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc
+  fi
+  # Unset DISPLAY for interactive shells to prevent GUI detection
+  if ! grep -q "unset DISPLAY" /config/.bashrc; then
+    echo "unset DISPLAY" >> /config/.bashrc
   fi
 fi
 unset DISPLAY
