@@ -19,7 +19,13 @@ RUN apt-get update && \
 # Install OpenClaw/Open Cloud via npm.
 RUN npm i -g openclaw && \
     npm cache clean --force && \
-    command -v openclaw && \
+    # Create wrapper to force DISPLAY=0 for all invocations (CLI & Service)
+    OPENCLAW_BIN=$(which openclaw) && \
+    mv "$OPENCLAW_BIN" "$OPENCLAW_BIN-core" && \
+    echo '#!/bin/sh' > "$OPENCLAW_BIN" && \
+    echo 'export DISPLAY=0' >> "$OPENCLAW_BIN" && \
+    echo "exec \"$OPENCLAW_BIN-core\" \"\$@\"" >> "$OPENCLAW_BIN" && \
+    chmod +x "$OPENCLAW_BIN" && \
     openclaw --version
 
 # Setup Homebrew Directory for abc user
