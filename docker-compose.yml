@@ -17,7 +17,6 @@ services:
       - TZ=Etc/UTC
     volumes:
       - ./agent-01/.openclaw:/config/.openclaw
-      - .:/workspace
     ports:
       - "8080:3000" # Webtop HTTP
       - "8081:3001" # Webtop HTTPS
