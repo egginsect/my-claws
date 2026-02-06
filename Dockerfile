@@ -20,41 +20,39 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential procps file git unzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Setup linuxbrew user
-RUN useradd -m -s /bin/bash linuxbrew && \
-    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Setup Homebrew Directory for abc user
+RUN mkdir -p /home/linuxbrew /config && \
+    chown -R abc:abc /home/linuxbrew /config
 
-# Install Homebrew (as linuxbrew user)
-USER linuxbrew
-RUN export HOME=/home/linuxbrew && \
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/linuxbrew/.bashrc
-
-# Install 1Password CLI (as linuxbrew user)
-RUN export HOME=/home/linuxbrew && \
+# Install Homebrew, 1Password CLI, and GitHub CLI (as abc user)
+USER abc
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
-    brew install 1password-cli
+    brew install 1password-cli gh
 
-# Switch back to root and setup global access
+# Switch back to root for cleanup/final setup and global config
 USER root
-RUN ln -sf /home/linuxbrew/.linuxbrew/bin/op /usr/local/bin/op && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /etc/profile.d/homebrew.sh && \
-    chmod +x /etc/profile.d/homebrew.sh
+# (No global config changes to prevent leakage)
 
 # Copy OpenClaw from builder stage
 COPY --from=openclaw /app /app
 
 # Create openclaw command wrapper
-RUN echo '#!/bin/sh\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
+# Unset DISPLAY to prevent CLI from detecting GUI environment (Webtop sets :1 globally)
+RUN echo '#!/bin/sh\nunset DISPLAY\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
     chmod +x /usr/local/bin/openclaw
 
+# Add Homebrew to PATH for all users (root included)
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
+
 # Create s6 service for OpenClaw gateway (runs at container boot)
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway && \
-    echo '#!/usr/bin/with-contenv bash\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
+# Also handles fixing /config permissions and user bashrc setup
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d && \
+    touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser && \
+    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
     > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/openclaw-gateway
 
-# Fix: Create /defaults/pid to allow Selkies streaming to start
-RUN mkdir -p /defaults && echo "1" > /defaults/pid
+
