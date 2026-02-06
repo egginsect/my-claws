@@ -32,7 +32,7 @@ RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.co
 
 # Switch back to root for cleanup/final setup and global config
 USER root
-RUN echo 'if [ "$(id -u)" -eq 1000 ]; then eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"; fi' >> /etc/bash.bashrc
+# (No global config changes to prevent leakage)
 
 # Copy OpenClaw from builder stage
 COPY --from=openclaw /app /app
@@ -42,12 +42,11 @@ RUN echo '#!/bin/sh\nexec node /app/dist/index.js "$@"' > /usr/local/bin/opencla
     chmod +x /usr/local/bin/openclaw
 
 # Create s6 service for OpenClaw gateway (runs at container boot)
-RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway && \
-    echo '#!/usr/bin/with-contenv bash\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
+# Also handles fixing /config permissions and user bashrc setup
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d && \
+    touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser && \
+    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "if [ \"\$(id -u)\" -eq 1000 ]; then eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"; fi" >> /config/.bashrc\n    chown abc:abc /config/.bashrc\n  fi\nfi\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
     > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/openclaw-gateway
-
-# Fix: Create /defaults/pid to allow Selkies streaming to start
-RUN mkdir -p /defaults && echo "1" > /defaults/pid
