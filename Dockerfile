@@ -18,7 +18,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install OpenClaw/Open Cloud via npm.
-# Install OpenClaw/Open Cloud via npm.
 RUN npm i -g openclaw && \
     npm cache clean --force && \
     openclaw --version
