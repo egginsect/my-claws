@@ -1,7 +1,3 @@
-# Stage 1: Get pre-built OpenClaw
-FROM alpine/openclaw:latest AS openclaw
-
-# Stage 2: Webtop with OpenClaw
 FROM lscr.io/linuxserver/webtop:ubuntu-xfce
 
 # Install Node.js 22 (Securely)
@@ -15,10 +11,15 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Install system dependencies for Homebrew
+# Install system dependencies for Homebrew and tooling
 RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential procps file git unzip && \
     rm -rf /var/lib/apt/lists/*
+
+# Install OpenClaw/Open Cloud via npm.
+RUN npm i -g openclaw && \
+    command -v openclaw && \
+    openclaw --version
 
 # Setup Homebrew Directory for abc user
 RUN mkdir -p /home/linuxbrew /config && \
@@ -28,19 +29,14 @@ RUN mkdir -p /home/linuxbrew /config && \
 USER abc
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
-    brew install 1password-cli gh
+    brew install 1password-cli gh && \
+    brew --version && \
+    gh --version && \
+    op --version
 
 # Switch back to root for cleanup/final setup and global config
 USER root
 # (No global config changes to prevent leakage)
-
-# Copy OpenClaw from builder stage
-COPY --from=openclaw /app /app
-
-# Create openclaw command wrapper
-# Unset DISPLAY to prevent CLI from detecting GUI environment (Webtop sets :1 globally)
-RUN echo '#!/bin/sh\nunset DISPLAY\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
-    chmod +x /usr/local/bin/openclaw
 
 # Add Homebrew to PATH for all users (root included)
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
@@ -49,10 +45,8 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}
 # Also handles fixing /config permissions and user bashrc setup
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d && \
     touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser && \
-    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}' \
+    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nunset DISPLAY\nexec openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}' \
     > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
     touch /etc/s6-overlay/s6-rc.d/user/contents.d/openclaw-gateway
-
-
