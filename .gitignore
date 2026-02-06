@@ -16,4 +16,9 @@ node_modules/
 key.txt
 
 !**/.openclaw/workspace/
-!**/.openclaw/workspace/*.md
+# Ignore plaintext MD files (shadowed)
+# !**/.openclaw/workspace/*.md  <-- Removed old whitelist
+**/.openclaw/workspace/*.md
+
+# Whitelist encrypted MD files
+!**/.openclaw/workspace/*.enc.md
