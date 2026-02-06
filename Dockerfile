@@ -49,7 +49,7 @@ ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}
 # Also handles fixing /config permissions and user bashrc setup
 RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d && \
     touch /etc/s6-overlay/s6-rc.d/openclaw-gateway/dependencies.d/init-adduser && \
-    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
+    echo '#!/usr/bin/with-contenv bash\n# Fix permissions for entire /config directory (abc home)\nchown -R abc:abc /config\n# Ensure brew in .bashrc (with UID check for shared home)\nif [ -f /config/.bashrc ]; then\n  # Remove old unsafe line if present (legacy fix cleanup)\n  sed -i "/eval.*brew shellenv.*/d" /config/.bashrc\n  # Append secure line\n  if ! grep -q "brew shellenv" /config/.bashrc; then\n    echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc\n  fi\nfi\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}' \
     > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
