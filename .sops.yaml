@@ -1,5 +1,5 @@
 creation_rules:
-  - path_regex: (openclaw\.json|.*\.enc\.md)$
+  - path_regex: (openclaw\.json|.*\.md)$
     key_groups:
       - age:
           - "age1dzxz8hw0gygy0rjc9tp92e9hvu5appaghkyzye2uwq964catfywspdh0z7"
