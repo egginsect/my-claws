@@ -1,5 +1,5 @@
 creation_rules:
-  - path_regex: agent-01/\.openclaw/openclaw\.enc\.json$
+  - path_regex: openclaw.enc.json$
     key_groups:
       - age:
           - "age1dzxz8hw0gygy0rjc9tp92e9hvu5appaghkyzye2uwq964catfywspdh0z7"
