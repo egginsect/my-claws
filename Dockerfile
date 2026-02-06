@@ -38,7 +38,8 @@ USER root
 COPY --from=openclaw /app /app
 
 # Create openclaw command wrapper
-RUN echo '#!/bin/sh\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
+# Unset DISPLAY to prevent CLI from detecting GUI environment (Webtop sets :1 globally)
+RUN echo '#!/bin/sh\nunset DISPLAY\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
     chmod +x /usr/local/bin/openclaw
 
 # Create s6 service for OpenClaw gateway (runs at container boot)
