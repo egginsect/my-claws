@@ -1,0 +1,22 @@
+#!/bin/sh
+# post-merge: Decrypt configuration and workspace files
+# Supports multiple agent directories (e.g., coder, assistant)
+
+export SOPS_AGE_KEY_FILE=key.txt
+files_changed=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD)
+
+# 1. Decrypt openclaw.json
+echo "$files_changed" | grep "\.openclaw/openclaw\.enc\.json$" | while read -r enc_file; do
+    dec_file="${enc_file%.enc.json}.json"
+    echo "🔓 SOPS: Decrypting $dec_file..."
+    sops -d "$enc_file" > "$dec_file"
+done
+
+# 2. Decrypt Workspace MD files
+echo "$files_changed" | grep "\.openclaw/workspace/.*\.enc\.md$" | grep -v "\.enc\.enc\.md$" | while read -r enc_file; do
+    dec_file="${enc_file%.enc.md}.md"
+    echo "🔓 SOPS: Decrypting $dec_file..."
+    sops -d "$enc_file" > "$dec_file"
+done
+
+echo "✅ SOPS: Decryption complete."
