@@ -12,9 +12,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install system dependencies for Homebrew and tooling
+# Install system dependencies for Homebrew and tooling
 RUN apt-get update && \
-    # Install OpenClaw/Open Cloud via npm.
-    RUN npm i -g openclaw && \
+    apt-get install -y --no-install-recommends build-essential procps file git unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install OpenClaw/Open Cloud via npm.
+RUN npm i -g openclaw && \
     npm cache clean --force && \
     # Create 'claw' wrapper to unset DISPLAY (avoids circular deps and GUI detection)
     echo '#!/bin/sh' > /usr/local/bin/claw && \
@@ -22,11 +26,6 @@ RUN apt-get update && \
     echo 'exec openclaw "$@"' >> /usr/local/bin/claw && \
     chmod +x /usr/local/bin/claw && \
     claw --version
-
-# Install system dependencies for Homebrew and tooling
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential procps file git unzip && \
-    rm -rf /var/lib/apt/lists/*
 
 # Setup Homebrew Directory for abc user
 RUN mkdir -p /home/linuxbrew /config && \
