@@ -5,6 +5,15 @@ node_modules/
 # OpenClaw
 **/.openclaw/**
 !**/.openclaw/
-!**/.openclaw/openclaw.json
+# Ignore plaintext config (it's a shadow file now)
+!**/.openclaw/openclaw.json 
+**/.openclaw/openclaw.json
+
+# Whitelist the encrypted version
+!**/.openclaw/openclaw.enc.json
+
+# Ignore the encryption key
+key.txt
+
 !**/.openclaw/workspace/
 !**/.openclaw/workspace/*.md
