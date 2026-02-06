@@ -1,46 +1,30 @@
-FROM alpine/openclaw:latest
+# Stage 1: Get pre-built OpenClaw
+FROM alpine/openclaw:latest AS openclaw
 
-# Switch to root to install system dependencies and Homebrew
-USER root
+# Stage 2: Webtop with OpenClaw
+FROM lscr.io/linuxserver/webtop:ubuntu-xfce
 
-# Install dependencies needed for Homebrew and sudo
+# Install Node.js 22
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    procps \
-    curl \
-    file \
-    git \
-    sudo && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Give node user passwordless sudo for Homebrew installation
-RUN echo 'node ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Copy OpenClaw from builder stage
+COPY --from=openclaw /app /app
 
-# Switch to node user to install Homebrew (Homebrew refuses to run as root)
-USER node
-WORKDIR /home/node
-
-# Install Homebrew
-ENV NONINTERACTIVE=1
-RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Add Homebrew to PATH for all users
-USER root
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
-
-# Create alias for 'openclaw' command to run 'node dist/index.js'
-RUN echo '#!/bin/sh' > /usr/local/bin/openclaw && \
-    echo 'exec node /app/dist/index.js "$@"' >> /usr/local/bin/openclaw && \
+# Create openclaw command wrapper
+RUN echo '#!/bin/sh\nexec node /app/dist/index.js "$@"' > /usr/local/bin/openclaw && \
     chmod +x /usr/local/bin/openclaw
 
-# Switch back to node user for security
-USER node
+# Create s6 service for OpenClaw gateway (runs at container boot)
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/openclaw-gateway && \
+    echo '#!/usr/bin/with-contenv bash\nexec /usr/local/bin/openclaw gateway --allow-unconfigured --bind lan' \
+    > /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
+    chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
+    echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
+    touch /etc/s6-overlay/s6-rc.d/user/contents.d/openclaw-gateway
 
-# Set working directory
-WORKDIR /app
-
-# Default command is handled by the base image
-
-
-
+# Fix: Create /defaults/pid to allow Selkies streaming to start
+RUN mkdir -p /defaults && echo "1" > /defaults/pid
