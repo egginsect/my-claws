@@ -20,23 +20,22 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential procps file git unzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Setup linuxbrew user
-RUN useradd -m -s /bin/bash linuxbrew && \
-    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Setup Homebrew Directory for abc user
+RUN mkdir -p /home/linuxbrew /config && \
+    chown -R abc:abc /home/linuxbrew /config
 
-# Install Homebrew (as linuxbrew user)
-USER linuxbrew
-RUN export HOME=/home/linuxbrew && \
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/linuxbrew/.bashrc
+# Install Homebrew (as abc user)
+USER abc
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /config/.bashrc
 
-# Install 1Password CLI (as linuxbrew user)
-RUN export HOME=/home/linuxbrew && \
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
-    brew install 1password-cli
+# Install 1Password CLI and GitHub CLI (as abc user)
+RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    brew install 1password-cli gh
 
 # Switch back to root and setup global access
 USER root
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 RUN ln -sf /home/linuxbrew/.linuxbrew/bin/op /usr/local/bin/op && \
     echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /etc/profile.d/homebrew.sh && \
     chmod +x /etc/profile.d/homebrew.sh
