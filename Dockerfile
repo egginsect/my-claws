@@ -13,20 +13,20 @@ RUN apt-get update && \
 
 # Install system dependencies for Homebrew and tooling
 RUN apt-get update && \
+    # Install OpenClaw/Open Cloud via npm.
+    RUN npm i -g openclaw && \
+    npm cache clean --force && \
+    # Create 'claw' wrapper to unset DISPLAY (avoids circular deps and GUI detection)
+    echo '#!/bin/sh' > /usr/local/bin/claw && \
+    echo 'unset DISPLAY' >> /usr/local/bin/claw && \
+    echo 'exec openclaw "$@"' >> /usr/local/bin/claw && \
+    chmod +x /usr/local/bin/claw && \
+    claw --version
+
+# Install system dependencies for Homebrew and tooling
+RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential procps file git unzip && \
     rm -rf /var/lib/apt/lists/*
-
-# Install OpenClaw/Open Cloud via npm.
-RUN npm i -g openclaw && \
-    npm cache clean --force && \
-    # Create wrapper to force DISPLAY=0 for all invocations (CLI & Service)
-    OPENCLAW_BIN=$(which openclaw) && \
-    mv "$OPENCLAW_BIN" "$OPENCLAW_BIN-core" && \
-    echo '#!/bin/sh' > "$OPENCLAW_BIN" && \
-    echo 'unset DISPLAY' >> "$OPENCLAW_BIN" && \
-    echo "exec \"$OPENCLAW_BIN-core\" \"\$@\"" >> "$OPENCLAW_BIN" && \
-    chmod +x "$OPENCLAW_BIN" && \
-    openclaw --version
 
 # Setup Homebrew Directory for abc user
 RUN mkdir -p /home/linuxbrew /config && \
@@ -68,7 +68,7 @@ if [ -f /config/.bashrc ]; then
   fi
 fi
 unset DISPLAY
-exec openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}
+exec claw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}
 EOF
 RUN chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
