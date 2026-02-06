@@ -23,7 +23,7 @@ RUN npm i -g openclaw && \
     OPENCLAW_BIN=$(which openclaw) && \
     mv "$OPENCLAW_BIN" "$OPENCLAW_BIN-core" && \
     echo '#!/bin/sh' > "$OPENCLAW_BIN" && \
-    echo 'export DISPLAY=0' >> "$OPENCLAW_BIN" && \
+    echo 'unset DISPLAY' >> "$OPENCLAW_BIN" && \
     echo "exec \"$OPENCLAW_BIN-core\" \"\$@\"" >> "$OPENCLAW_BIN" && \
     chmod +x "$OPENCLAW_BIN" && \
     openclaw --version
