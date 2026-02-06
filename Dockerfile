@@ -11,6 +11,19 @@ RUN apt-get update && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Homebrew and 1Password CLI
+# We use a dedicated linuxbrew user for installation but keep root as the main user
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential procps file git unzip && \
+    useradd -m -s /bin/bash linuxbrew && \
+    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    su - linuxbrew -c 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"' && \
+    su - linuxbrew -c 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && brew install 1password-cli' && \
+    ln -sf /home/linuxbrew/.linuxbrew/bin/op /usr/local/bin/op && \
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /etc/profile.d/homebrew.sh && \
+    chmod +x /etc/profile.d/homebrew.sh && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy OpenClaw from builder stage
 COPY --from=openclaw /app /app
 
