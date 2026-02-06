@@ -24,21 +24,15 @@ RUN apt-get update && \
 RUN mkdir -p /home/linuxbrew /config && \
     chown -R abc:abc /home/linuxbrew /config
 
-# Install Homebrew (as abc user)
+# Install Homebrew, 1Password CLI, and GitHub CLI (as abc user)
 USER abc
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /config/.bashrc
-
-# Install 1Password CLI and GitHub CLI (as abc user)
-RUN eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && \
     brew install 1password-cli gh
 
-# Switch back to root and setup global access
+# Switch back to root for cleanup/final setup and global config
 USER root
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
-RUN ln -sf /home/linuxbrew/.linuxbrew/bin/op /usr/local/bin/op && \
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /etc/profile.d/homebrew.sh && \
-    chmod +x /etc/profile.d/homebrew.sh
+RUN echo 'if [ "$(id -u)" -eq 1000 ]; then eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"; fi' >> /etc/bash.bashrc
 
 # Copy OpenClaw from builder stage
 COPY --from=openclaw /app /app
