@@ -18,14 +18,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install OpenClaw/Open Cloud via npm.
+# Install OpenClaw/Open Cloud via npm.
 RUN npm i -g openclaw && \
     npm cache clean --force && \
-    # Create 'claw' wrapper to unset DISPLAY (avoids circular deps and GUI detection)
-    echo '#!/bin/sh' > /usr/local/bin/claw && \
-    echo 'unset DISPLAY' >> /usr/local/bin/claw && \
-    echo 'exec openclaw "$@"' >> /usr/local/bin/claw && \
-    chmod +x /usr/local/bin/claw && \
-    claw --version
+    openclaw --version
 
 # Setup Homebrew Directory for abc user
 RUN mkdir -p /home/linuxbrew /config && \
@@ -65,9 +61,13 @@ if [ -f /config/.bashrc ]; then
   if ! grep -q "brew shellenv" /config/.bashrc; then
     echo "eval \"\$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"" >> /config/.bashrc
   fi
+  # Unset DISPLAY for interactive shells to prevent GUI detection
+  if ! grep -q "unset DISPLAY" /config/.bashrc; then
+    echo "unset DISPLAY" >> /config/.bashrc
+  fi
 fi
 unset DISPLAY
-exec claw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}
+exec openclaw gateway --allow-unconfigured --bind lan --port ${OPENCLAW_PORT:-18789}
 EOF
 RUN chmod +x /etc/s6-overlay/s6-rc.d/openclaw-gateway/run && \
     echo "longrun" > /etc/s6-overlay/s6-rc.d/openclaw-gateway/type && \
