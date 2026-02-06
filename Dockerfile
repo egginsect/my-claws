@@ -1,30 +1,46 @@
-FROM alpine/openclaw
+FROM alpine/openclaw:latest
 
-# Base OpenClaw setup
+# Switch to root to install system dependencies and Homebrew
 USER root
 
-# Install dependencies for Homebrew
-RUN apk add --no-cache bash curl git sudo build-base
+# Install dependencies needed for Homebrew and sudo
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    procps \
+    curl \
+    file \
+    git \
+    sudo && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user 'linuxbrew' if it doesn't exist, or use 'node' if it exists and we want to use that.
-# Homebrew doesn't like running as root.
-# Assuming 'alpine/openclaw' might have a user. Let's check or create one.
-# For now, we'll try running as root for the install script (it will warn) or setup a user.
-# Best practice: create a linuxbrew user.
-RUN adduser -D -s /bin/bash linuxbrew && \
-    echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+# Give node user passwordless sudo for Homebrew installation
+RUN echo 'node ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-USER linuxbrew
-WORKDIR /home/linuxbrew
+# Switch to node user to install Homebrew (Homebrew refuses to run as root)
+USER node
+WORKDIR /home/node
 
 # Install Homebrew
+ENV NONINTERACTIVE=1
 RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Add Homebrew to PATH
+# Add Homebrew to PATH for all users
+USER root
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
-WORKDIR /app
-# COPY . .
-# RUN npm install
+# Create alias for 'openclaw' command to run 'node dist/index.js'
+RUN echo '#!/bin/sh' > /usr/local/bin/openclaw && \
+    echo 'exec node /app/dist/index.js "$@"' >> /usr/local/bin/openclaw && \
+    chmod +x /usr/local/bin/openclaw
 
-CMD ["node"]
+# Switch back to node user for security
+USER node
+
+# Set working directory
+WORKDIR /app
+
+# Default command is handled by the base image
+
+
+

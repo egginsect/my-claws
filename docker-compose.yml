@@ -1,6 +1,36 @@
+networks:
+  claw-network:
+    driver: bridge
+
 services:
-  base:
+  agent-01:
     build:
       context: .
       dockerfile: Dockerfile
     image: openclaw:local
+    container_name: openclaw-agent-01
+    env_file:
+      - ./agent-01/.env
+    volumes:
+      - ./agent-01/.openclaw:/home/node/.openclaw
+    ports:
+      - "18789:18789"
+    networks:
+      - claw-network
+    restart: unless-stopped
+    # Override CMD to bind to 0.0.0.0 (accessible from host) instead of 127.0.0.1
+    command: [ "node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "lan" ]
+  # Example for agent-02:
+  # agent-02:
+  #   image: openclaw:local
+  #   container_name: openclaw-agent-02
+  #   env_file:
+  #     - ./agent-02/.env
+  #   volumes:
+  #     - ./agent-02/.openclaw:/home/node/.openclaw
+  #   ports:
+  #     - "18790:18789"
+  #   networks:
+  #     - claw-network
+  #   restart: unless-stopped
+  #   command: ["node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "lan"]

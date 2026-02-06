@@ -1,3 +1,19 @@
 .env
 node_modules/
 .DS_Store
+
+# OpenClaw - Sensitive
+**/.openclaw/credentials/
+**/.openclaw/identity/
+**/.openclaw/devices/
+**/.openclaw/agents/*/agent/auth-profiles.json
+**/.openclaw/openclaw.json
+**/.openclaw/exec-approvals.json
+**/.openclaw/*.bak*
+**/.openclaw/agents/*/sessions/
+
+# OpenClaw - Runtime
+**/.openclaw/workspace/
+**/.openclaw/media/
+**/.openclaw/update-check.json
+**/.openclaw/cron/
