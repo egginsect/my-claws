@@ -1,12 +1,12 @@
 #!/bin/sh
-# post-merge: Decrypt configuration and workspace files
+# post-checkout: Decrypt configuration and workspace files on branch switch
 # Supports multiple agent directories (e.g., coder, assistant)
 
 set -e
 
-# Exit if not a merge commit where ORIG_HEAD is available
+# Exit if ORIG_HEAD is not available (should be available on checkout)
 if ! git rev-parse --verify --quiet ORIG_HEAD > /dev/null 2>&1; then
-    echo "Info: Not a merge commit, skipping post-merge decryption."
+    echo "Info: ORIG_HEAD not available, skipping post-checkout decryption."
     exit 0
 fi
 

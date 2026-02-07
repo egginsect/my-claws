@@ -19,7 +19,7 @@ fi
 mkdir -p "$GIT_HOOKS_DIR"
 
 # Copy all hooks from the hooks directory
-for hook in pre-commit post-merge; do
+for hook in pre-commit post-merge post-checkout; do
     if [ -f "$HOOKS_DIR/$hook" ]; then
         cp "$HOOKS_DIR/$hook" "$GIT_HOOKS_DIR/$hook"
         chmod +x "$GIT_HOOKS_DIR/$hook"
