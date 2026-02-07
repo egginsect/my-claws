@@ -25,6 +25,6 @@ key.txt
 
 # Workspace directories (outside .openclaw)
 **/workspace/**
-!**/workspace/
+!**/workspace/**/
 !**/workspace/**/*.enc.md
 !**/workspace/**/*.enc.json
