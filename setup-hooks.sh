@@ -10,23 +10,30 @@ GIT_HOOKS_DIR=".git/hooks"
 echo "Installing Git hooks..."
 
 # Check if 1Password CLI is installed
+echo ""
+echo "Checking 1Password setup..."
 if ! command -v op &> /dev/null; then
-    echo "⚠️  1Password CLI (op) not found. Please install it."
-    echo "   brew install 1password-cli"
+    echo "ℹ️  1Password CLI (op) not found (optional)"
+    echo "   Install with: brew install 1password-cli"
+    echo "   Note: You can also use SOPS_AGE_KEY env var or local key file"
 else
     # Check if signed in
     if ! op whoami &> /dev/null; then
-        echo "⚠️  Please sign in to 1Password CLI: 'op signin'"
+        echo "ℹ️  1Password CLI not signed in (optional)"
+        echo "   You'll be prompted to sign in when running git commands"
+        echo "   Or you can sign in now: op signin"
     else
          # Check for the key item
          if ! op item get "openclaw-sops-key" &> /dev/null; then
-             echo "⚠️  1Password item 'openclaw-sops-key' not found."
-             echo "   Please create it in your vault with the 'password' field containing the Age key."
+             echo "ℹ️  1Password item 'openclaw-sops-key' not found"
+             echo "   Create it in the 'Develop' vault with the Age secret key in the 'password' field"
+             echo "   You can also use SOPS_AGE_KEY env var or local key file as fallback"
          else
-             echo "✅ 1Password integration ready."
+             echo "✅ 1Password integration ready!"
          fi
     fi
 fi
+echo ""
 
 # Check if hooks directory exists
 if [ ! -d "$HOOKS_DIR" ]; then

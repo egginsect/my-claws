@@ -7,31 +7,52 @@ set -e
 # Ensure PATH includes common locations for Homebrew/1Password
 export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
 
-# Use secure key location (user's home directory or environment# 1. Try environment variable
+# Use secure key location (user's home directory or environment variable)
+# 1. Try environment variable
 if [ -n "$SOPS_AGE_KEY" ]; then
     echo "🔑 Using SOPS key from environment variable"
     export SOPS_AGE_KEY="$SOPS_AGE_KEY"
 # 2. Try 1Password
-elif command -v op >/dev/null && op whoami >/dev/null 2>&1; then
-    echo "🔑 Fetching SOPS key from 1Password..."
-    # Attempt to read key, capturing stderr to a temp file to avoid leaking key on stdout but showing error
-    if key=$(op read "op://Develop/openclaw-sops-key/password"); then
-        export SOPS_AGE_KEY="$key"
+elif command -v op >/dev/null 2>&1; then
+    # Check if signed in, if not prompt for sign-in
+    if ! op whoami >/dev/null 2>&1; then
+        echo "🔐 1Password sign-in required for SOPS encryption"
+        if ! op signin; then
+            echo "⚠️  1Password sign-in failed, trying fallback methods..."
+        fi
+    fi
+
+    # Try to fetch the key from 1Password
+    if op whoami >/dev/null 2>&1; then
+        echo "🔑 Fetching SOPS key from 1Password..."
+        if key=$(op read "op://Develop/openclaw-sops-key/password" 2>/dev/null); then
+            export SOPS_AGE_KEY="$key"
+        else
+            echo "⚠️  Could not retrieve key from 1Password (item may not exist)"
+            echo "   Trying fallback methods..."
+        fi
+    fi
+fi
+
+# 3. Fallback to local key file (if 1Password failed or unavailable)
+if [ -z "$SOPS_AGE_KEY" ]; then
+    if [ -n "$SOPS_AGE_KEY_FILE" ] && [ -f "$SOPS_AGE_KEY_FILE" ]; then
+        echo "🔑 Using SOPS key from file: $SOPS_AGE_KEY_FILE"
+        export SOPS_AGE_KEY_FILE="$SOPS_AGE_KEY_FILE"
+    elif [ -f "$HOME/.config/sops/age/keys.txt" ]; then
+        echo "🔑 Using SOPS key from: $HOME/.config/sops/age/keys.txt"
+        export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/keys.txt"
+    elif [ -f "key.txt" ]; then
+        echo "🔑 Using local key.txt"
+        export SOPS_AGE_KEY_FILE="key.txt"
     else
-        echo "❌ 1Password retrieval failed."
+        echo "❌ No SOPS key found!"
+        echo "   Please either:"
+        echo "   1. Sign in to 1Password and ensure 'openclaw-sops-key' exists in 'Develop' vault"
+        echo "   2. Set SOPS_AGE_KEY environment variable"
+        echo "   3. Set SOPS_AGE_KEY_FILE to point to your key file"
         exit 1
     fi
-# 3. Fallback to local key file (legacy/optional)
-elif [ -f "$SOPS_AGE_KEY_FILE" ]; then
-    echo "🔑 Using SOPS key from file: $SOPS_AGE_KEY_FILE"
-    export SOPS_AGE_KEY_FILE="$SOPS_AGE_KEY_FILE"
-elif [ -f "key.txt" ]; then
-     echo "🔑 Using local key.txt"
-     export SOPS_AGE_KEY_FILE="key.txt"
-else
-    echo "❌ No SOPS key found!"
-    echo "   Please sign in to 1Password ('op signin') or set SOPS_AGE_KEY_FILE."
-    exit 1
 fi
 
 # Find all .openclaw directories to identify agents
