@@ -19,6 +19,7 @@ services:
       - OPENCLAW_PORT=18789
     volumes:
       - ./coder/.openclaw:/config/.openclaw
+      - ./coder/workspace:/config/workspace
     ports:
       - "8080:3000" # Webtop HTTP
       - "8081:3001" # Webtop HTTPS
@@ -40,6 +41,7 @@ services:
       - OPENCLAW_PORT=18790
     volumes:
       - ./assistant/.openclaw:/config/.openclaw
+      - ./assistant/workspace:/config/workspace
     ports:
       - "8082:3000" # Webtop HTTP
       - "8083:3001" # Webtop HTTPS
