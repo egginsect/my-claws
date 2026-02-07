@@ -22,3 +22,14 @@ key.txt
 
 # Whitelist encrypted MD files
 !**/.openclaw/workspace/*.enc.md
+
+# Workspace directories (outside .openclaw)
+/coder/workspace/**
+!/coder/workspace/**/
+!/coder/workspace/**/*.enc.md
+!/coder/workspace/**/*.enc.json
+
+/assistant/workspace/**
+!/assistant/workspace/**/
+!/assistant/workspace/**/*.enc.md
+!/assistant/workspace/**/*.enc.json
