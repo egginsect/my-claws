@@ -3,35 +3,13 @@ networks:
     driver: bridge
 
 services:
-  coder:
+  assistant:
     build:
       context: .
       dockerfile: Dockerfile
     image: openclaw:local
-    container_name: openclaw-coder
-    hostname: hm01
-    env_file:
-      - ./coder/.env
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-      - OPENCLAW_PORT=18790
-    volumes:
-      - ./coder/.openclaw:/config/.openclaw
-      - ./coder/workspace:/config/workspace
-    ports:
-      - "8080:3000" # Webtop HTTP
-      - "8081:3001" # Webtop HTTPS
-      - "18790:18790" # OpenClaw gateway
-    networks:
-      - claw-network
-    restart: unless-stopped
-
-  assistant:
-    image: openclaw:local
     container_name: openclaw-assistant
-    hostname: hm02
+    hostname: hm01
     env_file:
       - ./assistant/.env
     environment:
@@ -43,9 +21,31 @@ services:
       - ./assistant/.openclaw:/config/.openclaw
       - ./assistant/workspace:/config/workspace
     ports:
+      - "8080:3000" # Webtop HTTP
+      - "8081:3001" # Webtop HTTPS
+      - "18789:18789" # OpenClaw gateway
+    networks:
+      - claw-network
+    restart: unless-stopped
+
+  coder:
+    image: openclaw:local
+    container_name: openclaw-coder
+    hostname: hm02
+    env_file:
+      - ./coder/.env
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - OPENCLAW_PORT=18790
+    volumes:
+      - ./coder/.openclaw:/config/.openclaw
+      - ./coder/workspace:/config/workspace
+    ports:
       - "8082:3000" # Webtop HTTP
       - "8083:3001" # Webtop HTTPS
-      - "18789:18789" # OpenClaw gateway
+      - "18790:18790" # OpenClaw gateway
     networks:
       - claw-network
     restart: unless-stopped
