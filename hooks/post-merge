@@ -63,6 +63,12 @@ fi
 
 files_changed=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD)
 
+# Setup cleanup trap for temporary files
+cleanup_temp_files() {
+    rm -f /tmp/sops-merge-*.tmp 2>/dev/null || true
+}
+trap cleanup_temp_files EXIT
+
 # 1. Decrypt openclaw.json
 echo "$files_changed" | grep "\.openclaw/openclaw\.enc\.json$" | while read -r enc_file; do
     # Skip if encrypted file no longer exists (deleted)
@@ -78,11 +84,20 @@ echo "$files_changed" | grep "\.openclaw/openclaw\.enc\.json$" | while read -r e
 
     # Native Merge Logic
     if [ -f "$dec_file" ]; then
-        # Create temp files for 3-way merge
-        base_enc="${enc_file}.base.enc"
-        base_dec="${dec_file}.base.tmp"
-        remote_dec="${dec_file}.remote.tmp"
-        
+        # Create temp files for 3-way merge with unique names in /tmp
+        temp_prefix="/tmp/sops-merge-$$-$(date +%s)"
+        base_enc="${temp_prefix}.base.enc"
+        base_dec="${temp_prefix}.base.tmp"
+        remote_dec="${temp_prefix}.remote.tmp"
+
+        # Security: Remove temp files if they exist as symlinks
+        for temp_file in "$base_enc" "$base_dec" "$remote_dec"; do
+            if [ -L "$temp_file" ]; then
+                echo "⚠️  Warning: Removing symlink at $temp_file for security"
+                rm "$temp_file"
+            fi
+        done
+
         # Try to get base version
         has_base=false
         if git show ORIG_HEAD:"$enc_file" > "$base_enc" 2>/dev/null; then
@@ -118,8 +133,8 @@ echo "$files_changed" | grep "\.openclaw/openclaw\.enc\.json$" | while read -r e
             echo "❌ Error: Failed to decrypt incoming $enc_file"
         fi
         
-        # Cleanup
-        rm -f "$base_enc" "$base_dec" "$remote_dec"
+        # Cleanup temp files immediately
+        rm -f "$base_enc" "$base_dec" "$remote_dec" 2>/dev/null || true
     else
         # No local file, just decrypt
         echo "🔓 SOPS: Decrypting $dec_file..."
@@ -142,11 +157,20 @@ echo "$files_changed" | grep "\.openclaw/workspace/.*\.enc\.md$" | grep -v "\.en
 
     # Native Merge Logic
     if [ -f "$dec_file" ]; then
-        # Create temp files for 3-way merge
-        base_enc="${enc_file}.base.enc"
-        base_dec="${dec_file}.base.tmp"
-        remote_dec="${dec_file}.remote.tmp"
-        
+        # Create temp files for 3-way merge with unique names in /tmp
+        temp_prefix="/tmp/sops-merge-$$-$(date +%s)"
+        base_enc="${temp_prefix}.base.enc"
+        base_dec="${temp_prefix}.base.tmp"
+        remote_dec="${temp_prefix}.remote.tmp"
+
+        # Security: Remove temp files if they exist as symlinks
+        for temp_file in "$base_enc" "$base_dec" "$remote_dec"; do
+            if [ -L "$temp_file" ]; then
+                echo "⚠️  Warning: Removing symlink at $temp_file for security"
+                rm "$temp_file"
+            fi
+        done
+
         # Try to get base version
         has_base=false
         if git show ORIG_HEAD:"$enc_file" > "$base_enc" 2>/dev/null; then
@@ -177,8 +201,8 @@ echo "$files_changed" | grep "\.openclaw/workspace/.*\.enc\.md$" | grep -v "\.en
             echo "❌ Error: Failed to decrypt incoming $enc_file"
         fi
         
-        # Cleanup
-        rm -f "$base_enc" "$base_dec" "$remote_dec"
+        # Cleanup temp files immediately
+        rm -f "$base_enc" "$base_dec" "$remote_dec" 2>/dev/null || true
     else
         # No local file, just decrypt
         echo "🔓 SOPS: Decrypting $dec_file..."
