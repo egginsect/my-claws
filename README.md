@@ -22,3 +22,13 @@ Each agent has its own directory (e.g., `agent-01`) containing:
     ```bash
     docker-compose up -d
     ```
+
+## Post-Clone Setup (Important)
+
+To ensure secure handling of encrypted files, please configure git hooks immediately after cloning:
+
+```bash
+./setup-hooks.sh
+```
+
+This sets up automatic encryption/decryption and conflict resolution for configuration files.

@@ -15,18 +15,13 @@ if [ ! -d "$HOOKS_DIR" ]; then
     exit 1
 fi
 
-# Ensure .git/hooks directory exists
-mkdir -p "$GIT_HOOKS_DIR"
+# Configure git to use the hooks directory directly
+# This means updates to hooks/ are immediately active without copying
+git config core.hooksPath "$HOOKS_DIR"
 
-# Copy all hooks from the hooks directory
-for hook in pre-commit post-merge post-checkout; do
-    if [ -f "$HOOKS_DIR/$hook" ]; then
-        cp "$HOOKS_DIR/$hook" "$GIT_HOOKS_DIR/$hook"
-        chmod +x "$GIT_HOOKS_DIR/$hook"
-        echo "✅ Installed $hook hook"
-    else
-        echo "⚠️ Warning: $hook hook not found in $HOOKS_DIR"
-    fi
-done
+# Ensure hooks are executable
+chmod +x "$HOOKS_DIR/pre-commit" "$HOOKS_DIR/post-merge" "$HOOKS_DIR/post-checkout"
+
+echo "✅ Git hooks configured to use ./$HOOKS_DIR"
 
 echo "Git hooks setup complete!"
