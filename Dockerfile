@@ -17,7 +17,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends 1password-cli && \
     npm install -g @anthropic-ai/claude-code @openai/codex @google/gemini-cli && \
     ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
-    ln -sf /app/openclaw.mjs /usr/local/bin/opencloud && \
     npm cache clean --force && \
     rm -rf /var/lib/apt/lists/*
 
