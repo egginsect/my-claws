@@ -13,16 +13,12 @@ services:
     env_file:
       - ./assistant/.env
     environment:
-      - PUID=1000
-      - PGID=1000
       - TZ=Etc/UTC
       - OPENCLAW_PORT=18789
     volumes:
-      - ./assistant/.openclaw:/config/.openclaw
-      - ./assistant/workspace:/config/workspace
+      - ./assistant/.openclaw:/home/node/.openclaw
+      - ./assistant/workspace:/home/node/workspace
     ports:
-      - "8080:3000" # Webtop HTTP
-      - "8081:3001" # Webtop HTTPS
       - "18789:18789" # OpenClaw gateway
     networks:
       - claw-network
@@ -35,16 +31,12 @@ services:
     env_file:
       - ./coder/.env
     environment:
-      - PUID=1000
-      - PGID=1000
       - TZ=Etc/UTC
       - OPENCLAW_PORT=18790
     volumes:
-      - ./coder/.openclaw:/config/.openclaw
-      - ./coder/workspace:/config/workspace
+      - ./coder/.openclaw:/home/node/.openclaw
+      - ./coder/workspace:/home/node/workspace
     ports:
-      - "8082:3000" # Webtop HTTP
-      - "8083:3001" # Webtop HTTPS
       - "18790:18790" # OpenClaw gateway
     networks:
       - claw-network
